@@ -1,1 +1,10 @@
-
+pyTelegramBotAPI
+google-api-python-client
+yt-dlp
+pymongo
+dnspython
+pytgcalls
+pyrogram
+tgcrypto
+ffmpeg-python
+flask
