@@ -9,9 +9,9 @@ from telebot import TeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from googleapiclient.discovery import build
 
-# IMPORTANT: use py_tgcalls imports (not pytgcalls)
+# ✅ Correct imports for v2.x stable
 from pytgcalls import PyTgCalls
-from pytgcalls.types import AudioPiped
+from pytgcalls.types.input_stream import InputStream, InputAudioStream
 from pytgcalls.types.input_stream.quality import HighQualityAudio
 
 from pyrogram import Client
@@ -42,11 +42,6 @@ client = MongoClient(MONGO_URI)
 db = client["youtube_bot_db"]
 downloads_collection = db["downloads"]
 
-# ===== CLEAR OLD DATA ON STARTUP (local files remain cleared only) =====
-# (You asked DB to remain permanent earlier; but earlier code deleted DB.
-#  Here I will NOT delete DB. If you want to clear DB at startup uncomment the line below.)
-# downloads_collection.delete_many({})
-
 print("✅ Startup: downloads folder ready. MongoDB left intact (no delete).")
 
 # ===== YouTube API =====
@@ -57,10 +52,6 @@ playlist = {}
 
 # ===== DOWNLOAD FUNCTION =====
 def download_media(url, media_type="audio"):
-    """
-    Downloads media using yt_dlp into downloads/<video_id>.<ext>
-    Returns (file_path, info)
-    """
     outdir = "downloads"
     os.makedirs(outdir, exist_ok=True)
 
@@ -90,7 +81,6 @@ def download_media(url, media_type="audio"):
         if media_type == "audio":
             filename = filename.rsplit(".", 1)[0] + ".mp3"
 
-        # Save in MongoDB (prevent duplicate by video_id + type)
         try:
             if not downloads_collection.find_one({"video_id": info.get("id"), "type": media_type}):
                 downloads_collection.insert_one({
@@ -235,7 +225,6 @@ def play_handler(message):
         return
 
     title, url, video_id, desc = results[0]
-    # download audio first (sync function uses threads elsewhere)
     filepath, info = download_media(url, "audio")
 
     chat_id = message.chat.id
@@ -245,15 +234,12 @@ def play_handler(message):
     playlist[chat_id].append((filepath, title))
     bot.reply_to(message, f"🎶 Added <b>{title}</b> to playlist.")
 
-    # if only one song in playlist, start playing
     if len(playlist[chat_id]) == 1:
-        # run async play_next from event loop
         asyncio.run(play_next(chat_id))
 
 async def play_next(chat_id):
     if chat_id in playlist and playlist[chat_id]:
         file_path, title = playlist[chat_id][0]
-        # join group call with InputStream wrapper
         await pytgcalls.join_group_call(
             chat_id,
             InputStream(
@@ -270,7 +256,6 @@ async def play_next(chat_id):
 def skip_handler(message):
     chat_id = message.chat.id
     if chat_id in playlist and len(playlist[chat_id]) > 1:
-        # remove current and play next
         playlist[chat_id].pop(0)
         bot.reply_to(message, "⏭ Skipping to next song...")
         asyncio.run(play_next(chat_id))
@@ -298,18 +283,13 @@ def home():
 
 # ===== STARTUP =====
 async def main():
-    # start pyrogram client and py-tgcalls
     await app_client.start()
     await pytgcalls.start()
     print("🤖 Bot + VC + Playlist system running with MongoDB caching...")
 
-    # start telebot polling in background thread
     threading.Thread(target=lambda: bot.polling(non_stop=True), daemon=True).start()
-
-    # run flask server in background thread (so asyncio loop is not blocked)
     threading.Thread(target=lambda: server.run(host="0.0.0.0", port=int(os.getenv("PORT", 10000))), daemon=True).start()
 
-    # keep the async loop running
     await asyncio.Event().wait()
 
 if __name__ == "__main__":
