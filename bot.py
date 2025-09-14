@@ -2,6 +2,7 @@ import os
 import datetime
 import yt_dlp
 import threading
+import json
 
 from flask import Flask, request
 from pymongo import MongoClient
@@ -31,13 +32,13 @@ os.makedirs("downloads", exist_ok=True)
 # ===== DOWNLOAD FUNCTION =====
 def download_media(url, media_type="audio"):
     outdir = "downloads"
-
     ydl_opts = {
         "format": "bestaudio/best" if media_type == "audio" else "best[ext=mp4]/best",
         "outtmpl": f"{outdir}/%(id)s.%(ext)s",
         "noplaylist": True,
         "quiet": True,
-        "retries": 3,
+        "retries": 2,
+        "concurrent_fragment_downloads": 5,  # 🚀 Fast download
     }
 
     if media_type == "audio":
@@ -135,8 +136,11 @@ def song_handler(message):
     else:
         bot.reply_to(message, f"🎵 Downloading <b>{title}</b> ...")
         def process():
-            filepath, info = download_media(url, "audio")
-            send_file(message.chat.id, filepath, "audio", title)
+            try:
+                filepath, info = download_media(url, "audio")
+                send_file(message.chat.id, filepath, "audio", title)
+            except Exception as e:
+                bot.send_message(message.chat.id, f"❌ Download error: {e}")
         threading.Thread(target=process, daemon=True).start()
 
 @bot.message_handler(commands=["video"])
@@ -166,8 +170,11 @@ def video_handler(message):
     else:
         bot.reply_to(message, f"🎬 Downloading <b>{title}</b> ...")
         def process():
-            filepath, info = download_media(url, "video")
-            send_file(message.chat.id, filepath, "video", title)
+            try:
+                filepath, info = download_media(url, "video")
+                send_file(message.chat.id, filepath, "video", title)
+            except Exception as e:
+                bot.send_message(message.chat.id, f"❌ Download error: {e}")
         threading.Thread(target=process, daemon=True).start()
 
 # ===== FLASK SERVER (Webhook Mode) =====
@@ -175,9 +182,9 @@ server = Flask(__name__)
 
 @server.route(f"/{BOT_TOKEN}", methods=["POST"])
 def process_webhook():
-    update = request.get_data().decode("utf-8")
-    update = types.Update.de_json(update)
-    bot.process_new_updates([update])
+    update = request.get_json(force=True)   # ✅ FIXED
+    if update:
+        bot.process_new_updates([types.Update.de_json(update)])
     return "OK", 200
 
 @server.route("/")
