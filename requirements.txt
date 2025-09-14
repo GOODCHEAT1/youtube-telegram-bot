@@ -1,6 +1,6 @@
 pyrogram==2.0.106
-tgcrypto==1.2.5
-pytgcalls
+tgcrypto
+git+https://github.com/pytgcalls/pytgcalls@main
 
 pymongo==4.6.1
 dnspython==2.4.2
