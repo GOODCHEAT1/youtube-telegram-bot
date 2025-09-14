@@ -11,7 +11,7 @@ from googleapiclient.discovery import build
 
 # IMPORTANT: use py_tgcalls imports (not pytgcalls)
 from pytgcalls import PyTgCalls
-from pytgcalls.types.input_stream import InputAudioStream
+from pytgcalls.types import AudioPiped
 from pytgcalls.types.input_stream.quality import HighQualityAudio
 
 from pyrogram import Client
