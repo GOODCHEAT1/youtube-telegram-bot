@@ -10,7 +10,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from googleapiclient.discovery import build
 
 # IMPORTANT: use py_tgcalls imports (not pytgcalls)
-from py_tgcalls import PyTgCalls
+from pytgcalls import PyTgCalls
 from py_tgcalls.types.input_stream import InputStream, InputAudioStream
 from py_tgcalls.types.input_stream.quality import HighQualityAudio
 
