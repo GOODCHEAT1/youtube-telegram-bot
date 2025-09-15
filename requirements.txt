@@ -2,3 +2,4 @@ pyTelegramBotAPI
 mega.py
 flask
 gunicorn
+tenacity>=8.2.2
